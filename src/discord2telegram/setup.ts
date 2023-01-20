@@ -14,6 +14,7 @@ import { Telegraf } from "telegraf";
 import { escapeHTMLSpecialChars, ignoreAlreadyDeletedError } from "./helpers";
 import { Client, Message, TextChannel } from "discord.js";
 import { Settings } from "../settings/Settings";
+import { RequestInfo, RequestInit } from "node-fetch";
 
 /***********
  * Helpers *
@@ -56,6 +57,7 @@ function makeJoinLeaveFunc(logger: Logger, verb: "joined" | "left", bridgeMap: B
 					await tgBot.telegram.sendMessage(bridge.telegram.chatId, text, {
 						parse_mode: "HTML"
 					});
+					
 				} catch (err) {
 					logger.error(`[${bridge.name}] Could not notify Telegram about a user that ${verb} Discord`, err);
 				}
@@ -178,24 +180,49 @@ export function setup(
 							//console.log("d2t replyId: " + replyId);
 						}
 					}
+					
 				}
 
 				// Check for attachments and pass them on
 				message.attachments.forEach(async ({ url }) => {
 					try {
+						
+					
+					//const tgMessage = await tgBot.telegram.sendPhoto(bridge.telegram.chatId, url, {caption: "I'm a cool bot!"}); 
+					
+						
 						const textToSend = bridge.discord.sendUsernames
 							? `<b>${senderName}</b>\n<a href="${url}">${url}</a>`
 							: `<a href="${url}">${url}</a>`;
 						if (replyId === "0" || replyId === undefined) {
-							const tgMessage = await tgBot.telegram.sendMessage(bridge.telegram.chatId, textToSend, {
-								parse_mode: "HTML"
-							});
+							const tgMessage = await tgBot.telegram.sendPhoto(bridge.telegram.chatId, url, {caption: message.content});
 							messageMap.insert(
 								MessageMap.DISCORD_TO_TELEGRAM,
 								bridge,
 								message.id,
 								tgMessage.message_id.toString()
-							);
+							);	
+							
+						
+						//if (message.content != "") {
+						//tgBot.telegram.deleteMessage(bridge.telegram.chatId, tgMessage.message_id-1)
+						//}
+						
+						
+						
+						//const textToSend = bridge.discord.sendUsernames
+						//	? `<b>${senderName}</b>\n<a href="${url}">${url}</a>`
+						//	: `<a href="${url}">${url}</a>`;
+						//if (replyId === "0" || replyId === undefined) {
+						//	const tgMessage = await tgBot.telegram.sendMessage(bridge.telegram.chatId, textToSend, {
+						//		parse_mode: "HTML"
+						//	});
+						//	messageMap.insert(
+						//		MessageMap.DISCORD_TO_TELEGRAM,
+						//		bridge,
+						//		message.id,
+						//		tgMessage.message_id.toString()
+						//	);
 						} else {
 							const tgMessage = await tgBot.telegram.sendMessage(bridge.telegram.chatId, textToSend, {
 								reply_to_message_id: +replyId,
@@ -207,7 +234,7 @@ export function setup(
 								message.id,
 								tgMessage.message_id.toString()
 							);
-						}
+						 }
 					} catch (err) {
 						logger.error(`[${bridge.name}] Telegram did not accept an attachment:`, err);
 					}
@@ -222,6 +249,8 @@ export function setup(
 
 					// Convert it to something Telegram likes
 					const text = handleEmbed(embed, senderName);
+
+					
 
 					try {
 						// Send it
@@ -240,11 +269,13 @@ export function setup(
 					} catch (err) {
 						logger.error(`[${bridge.name}] Telegram did not accept an embed:`, err);
 					}
+					
 				});
 
 				// Check if there is an ordinary text message
 				if (message.cleanContent) {
 					// Modify the message to fit Telegram
+					if (message.attachments.size === 0) {
 					const processedMessage = md2html(message.cleanContent);
 
 					// Pass the message on to Telegram
@@ -280,6 +311,7 @@ export function setup(
 						logger.error(`[${bridge.name}] Telegram did not accept a message:`, err);
 						logger.error(`[${bridge.name}] Failed message:`, err);
 					}
+				}
 				}
 			});
 		} else if (
